@@ -239,6 +239,7 @@ st.sidebar.title("🃏 Torneo Briscola")
 page = st.sidebar.radio(
     "Menu",
     [
+        "Regolamento torneo"
         "Setup torneo",
         "Gironi",
         "Inserisci risultati",
@@ -274,6 +275,93 @@ else:
 
 st.title("🃏 Torneo di Briscola")
 
+# ------------------------------------------------------------
+# REGOLAMENTO TORNEO
+# ------------------------------------------------------------
+
+if page == "Regolamento torneo":
+    st.header("Benvenuti al Torneo di Briscola 🃏")
+
+    st.info(
+        "Regola importante: da quando restano 4 coppie, tutte le sfide si giocano al meglio di 3."
+    )
+
+    st.markdown("""
+### Come funziona il torneo
+
+Il torneo si svolge in **due fasi**.
+
+---
+
+## 1) Fase a gironi
+
+Le coppie iscritte vengono suddivise automaticamente in un numero di gironi pari a una **potenza di 2**:
+
+- 2 gironi
+- 4 gironi
+- 8 gironi
+- 16 gironi
+
+I gironi sono costruiti in modo da essere il più possibile equilibrati, con gruppi preferibilmente da **4–6 squadre**.
+
+Ogni coppia gioca contro le altre coppie del proprio girone.
+
+Tutte le partite dei gironi sono:
+
+➡️ **Partita secca (Best of 1)**
+
+---
+
+## 2) Qualificazione alla fase finale
+
+Passano alla fase finale:
+
+- con **2 gironi** → le **prime 2** di ogni girone
+- con **4 gironi** → le **prime 2** di ogni girone
+- con **8 gironi** → le **prime 2** di ogni girone
+- con **16 gironi** → solo la **prima classificata**
+
+---
+
+## 3) Fase finale a eliminazione diretta
+
+In base al numero di squadre qualificate, la fase finale può iniziare da:
+
+- **Semifinali**
+- **Quarti di finale**
+- **Ottavi di finale**
+
+---
+
+## Formato delle partite finali
+
+### Ottavi / Quarti
+➡️ **Partita secca (Best of 1)**
+
+### Semifinali
+➡️ **Best of 3**
+
+### Finale 1°–2° posto
+➡️ **Best of 3**
+
+### Finale 3°–4° posto
+➡️ **Best of 3**
+
+---
+
+## Classifica dei gironi
+
+La classifica viene ordinata secondo:
+
+1. Punti  
+2. Numero di vittorie  
+3. Differenza punti  
+4. Punti realizzati  
+
+---
+
+🏆 **Buon torneo e che vinca il migliore!**
+""")
 
 # ------------------------------------------------------------
 # SETUP TORNEO
