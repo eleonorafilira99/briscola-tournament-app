@@ -83,8 +83,9 @@ admin_password = st.sidebar.text_input(
 
 try:
     expected_password = st.secrets["ADMIN_PASSWORD"]
-except Exception:
-    st.sidebar.error("ADMIN_PASSWORD non configurata nei Secrets.")
+    st.sidebar.success("Secrets caricati correttamente")
+except Exception as e:
+    st.sidebar.error(f"Errore secrets: {e}")
     expected_password = None
 
 if st.sidebar.button("Accedi come admin"):
