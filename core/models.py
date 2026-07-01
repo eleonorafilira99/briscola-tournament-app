@@ -7,9 +7,16 @@ class Team:
     id: int
     player1: str
     player2: str
+    team_name: str = ""
 
     @property
     def name(self) -> str:
+        if self.team_name.strip():
+            return self.team_name
+        return f"{self.player1} / {self.player2}"
+
+    @property
+    def players_label(self) -> str:
         return f"{self.player1} / {self.player2}"
 
 

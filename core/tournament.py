@@ -51,11 +51,12 @@ def create_tournament(name: str) -> Tournament:
     return Tournament(name=name)
 
 
-def add_team(tournament: Tournament, player1: str, player2: str) -> None:
+def add_team(tournament: Tournament, player1: str, player2: str, team_name: str = "") -> None:
     team = Team(
         id=tournament.next_team_id,
         player1=player1.strip(),
         player2=player2.strip(),
+        team_name=team_name.strip(),
     )
     tournament.teams.append(team)
     tournament.next_team_id += 1

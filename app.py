@@ -400,17 +400,18 @@ if page == "Setup torneo":
             st.markdown("### Aggiungi coppia")
 
             with st.form("add_team_form"):
+                team_name = st.text_input("Nome squadra")
                 player1 = st.text_input("Giocatore 1")
                 player2 = st.text_input("Giocatore 2")
                 submitted = st.form_submit_button("Aggiungi coppia")
 
                 if submitted:
                     if player1.strip() and player2.strip():
-                        add_team(tournament, player1, player2)
+                        add_team(tournament, player1, player2, team_name)
                         st.success("Coppia aggiunta.")
                         st.rerun()
                     else:
-                        st.error("Inserisci entrambi i nomi.")
+                        st.error("Inserisci entrambi i nomi dei giocatori e della squadra.")
 
         st.markdown("### Coppie iscritte")
 
@@ -419,7 +420,10 @@ if page == "Setup torneo":
         else:
             for team in tournament.teams:
                 col1, col2 = st.columns([4, 1])
-                col1.write(f"**{team.id}** — {team.name}")
+                if team.team_name.strip():
+                    col1.write(f"**{team.id}** — {team.team_name} ({team.players_label})")
+                else:
+                    col1.write(f"**{team.id}** — {team.players_label}")
 
                 if is_admin() and not tournament.groups:
                     if col2.button("Rimuovi", key=f"remove_team_{team.id}"):
