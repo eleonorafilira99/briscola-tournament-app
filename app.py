@@ -283,49 +283,49 @@ if page == "Regolamento torneo":
     st.header("Benvenuti al Torneo di Briscola 🃏")
 
     st.info(
-        "Regola importante: da quando restano 4 coppie, tutte le sfide si giocano al meglio di 3."
+        "🔥 Da quando restano solo 4 coppie (semifinali), tutte le sfide si giocano al meglio delle 3 partite."
     )
 
     st.markdown("""
-### Come funziona il torneo
-
-Il torneo si svolge in **due fasi**.
+Benvenuti al **Torneo di Briscola**! 🃏  
+Di seguito trovate una breve spiegazione di come si svolgerà il torneo.
 
 ---
 
 ## 1) Fase a gironi
 
-Le coppie iscritte vengono suddivise automaticamente in un numero di gironi pari a una **potenza di 2**:
+All’inizio del torneo, tutte le coppie iscritte verranno suddivise automaticamente in **gironi equilibrati**, cercando di distribuire le squadre nel modo più uniforme possibile.
 
-- 2 gironi
-- 4 gironi
-- 8 gironi
-- 16 gironi
+In genere ogni girone sarà composto da **4–6 coppie**.
 
-I gironi sono costruiti in modo da essere il più possibile equilibrati, con gruppi preferibilmente da **4–6 squadre**.
+Durante questa fase, ogni coppia affronterà le altre coppie del proprio girone.
 
-Ogni coppia gioca contro le altre coppie del proprio girone.
+Tutte le partite dei gironi si giocano in:
 
-Tutte le partite dei gironi sono:
-
-➡️ **Partita secca (Best of 1)**
+➡️ **Partita secca**  
+(chi vince la partita conquista il match)
 
 ---
 
-## 2) Qualificazione alla fase finale
+## 2) Accesso alla fase finale
 
-Passano alla fase finale:
+Al termine dei gironi, le migliori coppie di ciascun girone si qualificano alla fase finale.
 
-- con **2 gironi** → le **prime 2** di ogni girone
-- con **4 gironi** → le **prime 2** di ogni girone
-- con **8 gironi** → le **prime 2** di ogni girone
-- con **16 gironi** → solo la **prima classificata**
+Il numero di coppie qualificate dipende dal numero totale di gironi:
+
+- con **2 gironi** → passano le **prime 2**
+- con **4 gironi** → passano le **prime 2**
+- con **8 gironi** → passano le **prime 2**
+- con **16 gironi** → passa solo la **prima classificata**
 
 ---
 
 ## 3) Fase finale a eliminazione diretta
 
-In base al numero di squadre qualificate, la fase finale può iniziare da:
+Da qui in avanti non si può più sbagliare:  
+chi perde viene eliminato.
+
+A seconda del numero di coppie qualificate, il tabellone finale può iniziare da:
 
 - **Semifinali**
 - **Quarti di finale**
@@ -333,34 +333,38 @@ In base al numero di squadre qualificate, la fase finale può iniziare da:
 
 ---
 
-## Formato delle partite finali
+## Come si giocano le finali?
 
-### Ottavi / Quarti
-➡️ **Partita secca (Best of 1)**
+### Ottavi e Quarti
+➡️ **Partita secca**
 
 ### Semifinali
-➡️ **Best of 3**
+➡️ **Al meglio delle 3 partite**  
+(vince chi arriva per primo a 2 vittorie)
 
 ### Finale 1°–2° posto
-➡️ **Best of 3**
+➡️ **Al meglio delle 3 partite**
 
 ### Finale 3°–4° posto
-➡️ **Best of 3**
+➡️ **Al meglio delle 3 partite**
 
 ---
 
-## Classifica dei gironi
+## Come viene calcolata la classifica dei gironi?
 
-La classifica viene ordinata secondo:
+In caso di parità, la classifica viene ordinata considerando:
 
-1. Punti  
+1. Punti conquistati  
 2. Numero di vittorie  
 3. Differenza punti  
-4. Punti realizzati  
+4. Punti totali realizzati  
 
 ---
 
-🏆 **Buon torneo e che vinca il migliore!**
+L’obiettivo è semplice:  
+**garantire a tutti diverse partite, mantenere il torneo equilibrato e rendere la fase finale emozionante fino all’ultimo.**
+
+🏆 **Buon divertimento e in bocca al lupo a tutti!**
 """)
 
 # ------------------------------------------------------------
