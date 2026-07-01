@@ -282,17 +282,13 @@ st.title("🃏 Torneo di Briscola")
 if page == "Regolamento torneo":
     st.header("Benvenuti al Torneo di Briscola 🃏")
 
-    st.info(
-        "🔥 Da quando restano solo 4 coppie (semifinali), tutte le sfide si giocano al meglio delle 3 partite."
-    )
-
     st.markdown("""
-Benvenuti al **Torneo di Briscola**! 🃏  
+Benvenuti! 🃏  
 Di seguito trovate una breve spiegazione di come si svolgerà il torneo.
 
 ---
 
-## 1) Fase a gironi
+## 1️⃣ Fase a gironi
 
 All’inizio del torneo, tutte le coppie iscritte verranno suddivise automaticamente in **gironi equilibrati**, cercando di distribuire le squadre nel modo più uniforme possibile.
 
@@ -307,7 +303,7 @@ Tutte le partite dei gironi si giocano in:
 
 ---
 
-## 2) Accesso alla fase finale
+## 2️⃣ Accesso alla fase finale
 
 Al termine dei gironi, le migliori coppie di ciascun girone si qualificano alla fase finale.
 
@@ -320,7 +316,7 @@ Il numero di coppie qualificate dipende dal numero totale di gironi:
 
 ---
 
-## 3) Fase finale a eliminazione diretta
+## 3️⃣ Fase finale a eliminazione diretta
 
 Da qui in avanti non si può più sbagliare:  
 chi perde viene eliminato.
@@ -342,10 +338,10 @@ A seconda del numero di coppie qualificate, il tabellone finale può iniziare da
 ➡️ **Al meglio delle 3 partite**  
 (vince chi arriva per primo a 2 vittorie)
 
-### Finale 1°–2° posto
+### Finale 3°–4° posto
 ➡️ **Al meglio delle 3 partite**
 
-### Finale 3°–4° posto
+### Finale 1°–2° posto
 ➡️ **Al meglio delle 3 partite**
 
 ---
@@ -360,11 +356,23 @@ In caso di parità, la classifica viene ordinata considerando:
 4. Punti totali realizzati  
 
 ---
+                
+## Premi
 
-L’obiettivo è semplice:  
-**garantire a tutti diverse partite, mantenere il torneo equilibrato e rendere la fase finale emozionante fino all’ultimo.**
+Le prime 3 coppie classificate riceveranno i seguenti premi:
 
-🏆 **Buon divertimento e in bocca al lupo a tutti!**
+🥇 **1° premio**  
+Panino + bevanda + fritto gratis
+
+🥈 **2° premio**  
+Bevanda + fritto gratis
+
+🥉 **3° premio**  
+Fritto gratis
+
+---
+
+🏆 **Buon divertimento e buona fortuna a tutti!**
 """)
 
 # ------------------------------------------------------------
