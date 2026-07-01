@@ -255,7 +255,7 @@ if not st.session_state.is_admin:
     password = st.sidebar.text_input("Password admin", type="password")
 
     if st.sidebar.button("Login admin"):
-        if password == st.secrets["sticazzi"]:
+        if password == st.secrets["ADMIN_PASSWORD"]:
             st.session_state.is_admin = True
             st.sidebar.success("Accesso admin effettuato.")
             st.rerun()
