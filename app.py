@@ -239,7 +239,7 @@ st.sidebar.title("🃏 Torneo Briscola")
 page = st.sidebar.radio(
     "Menu",
     [
-        "Regolamento torneo"
+        "Regolamento torneo",
         "Setup torneo",
         "Gironi",
         "Inserisci risultati",
