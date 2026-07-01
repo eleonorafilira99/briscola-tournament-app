@@ -1,0 +1,468 @@
+import streamlit as st
+
+from core.tournament import (
+    advance_final_stage,
+    all_group_matches_played,
+    can_advance_final_stage,
+    compute_group_standings,
+    create_final_stage,
+    create_tournament_from_team_names,
+    final_stage_exists,
+    get_final_matches,
+    get_team_name,
+    get_unplayed_matches,
+    register_match_result,
+)
+from data.storage import (
+    delete_saved_tournament,
+    load_tournament,
+    save_tournament,
+    saved_tournament_exists,
+)
+from ui.theme import apply_theme
+
+
+st.set_page_config(
+    page_title="Torneo di Briscola",
+    page_icon="🃏",
+    layout="wide",
+)
+
+apply_theme()
+
+
+if "tournament" not in st.session_state:
+    st.session_state.tournament = load_tournament()
+
+if "team_count" not in st.session_state:
+    st.session_state.team_count = 8
+
+
+def show_podium(tournament) -> None:
+    if tournament.champion_id is not None:
+        st.success(f"🏆 1° posto: {get_team_name(tournament, tournament.champion_id)}")
+
+    if getattr(tournament, "runner_up_id", None) is not None:
+        st.info(f"🥈 2° posto: {get_team_name(tournament, tournament.runner_up_id)}")
+
+    if getattr(tournament, "third_place_id", None) is not None:
+        st.info(f"🥉 3° posto: {get_team_name(tournament, tournament.third_place_id)}")
+
+    if getattr(tournament, "fourth_place_id", None) is not None:
+        st.info(f"4° posto: {get_team_name(tournament, tournament.fourth_place_id)}")
+
+
+st.markdown(
+    '<div class="main-title">🃏 Torneo di Briscola a Coppie</div>',
+    unsafe_allow_html=True,
+)
+
+st.markdown(
+    '<div class="subtitle">Gestione gironi, calendario, risultati, classifiche e tabellone finale.</div>',
+    unsafe_allow_html=True,
+)
+
+
+st.sidebar.title("Menu")
+
+if saved_tournament_exists():
+    st.sidebar.success("Torneo salvato presente")
+
+    if st.sidebar.button("Ricarica torneo salvato"):
+        st.session_state.tournament = load_tournament()
+        st.rerun()
+
+    if st.sidebar.button("Elimina torneo salvato"):
+        delete_saved_tournament()
+        st.session_state.tournament = None
+        st.rerun()
+else:
+    st.sidebar.info("Nessun torneo salvato")
+
+
+page = st.sidebar.radio(
+    "Sezione",
+    [
+        "Setup torneo",
+        "Gironi",
+        "Calendario",
+        "Inserisci risultati",
+        "Classifiche",
+        "Fase finale",
+    ],
+)
+
+
+if page == "Setup torneo":
+    st.markdown(
+        """
+        <div class="custom-card">
+            <span class="badge">Step 1</span>
+            <h3>Configurazione iniziale</h3>
+            <p>Inserisci il numero di squadre e assegna un nome a ciascuna coppia.</p>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    st.session_state.team_count = st.number_input(
+        "Numero di squadre",
+        min_value=2,
+        max_value=64,
+        value=st.session_state.team_count,
+        step=1,
+    )
+
+    st.divider()
+
+    team_names = []
+    cols = st.columns(2)
+
+    for index in range(st.session_state.team_count):
+        with cols[index % 2]:
+            name = st.text_input(
+                f"Nome squadra {index + 1}",
+                value=f"Squadra {index + 1}",
+                key=f"team_name_{index}",
+            )
+            team_names.append(name)
+
+    st.divider()
+
+    if st.button("Crea torneo", type="primary", use_container_width=True):
+        cleaned_names = [name.strip() for name in team_names if name.strip()]
+
+        if len(cleaned_names) < 2:
+            st.error("Inserisci almeno 2 squadre.")
+        elif len(set(name.lower() for name in cleaned_names)) != len(cleaned_names):
+            st.error("Ci sono nomi squadra duplicati. Correggili prima di creare il torneo.")
+        else:
+            st.session_state.tournament = create_tournament_from_team_names(cleaned_names)
+            save_tournament(st.session_state.tournament)
+            st.success("Torneo creato correttamente e salvato.")
+
+    if st.session_state.tournament is not None:
+        tournament = st.session_state.tournament
+
+        st.subheader("Riepilogo torneo")
+
+        group_matches_count = len([m for m in tournament.matches if m.stage == "group"])
+        final_matches_count = len([m for m in tournament.matches if m.stage == "final"])
+
+        col1, col2, col3, col4 = st.columns(4)
+        col1.metric("Squadre", len(tournament.teams))
+        col2.metric("Gironi", len(tournament.groups))
+        col3.metric("Partite gironi", group_matches_count)
+        col4.metric("Partite fase finale", final_matches_count)
+
+        show_podium(tournament)
+
+
+elif page == "Gironi":
+    tournament = st.session_state.tournament
+
+    if tournament is None:
+        st.warning("Prima crea un torneo nella sezione Setup torneo.")
+    else:
+        st.subheader("Gironi")
+
+        for group in tournament.groups:
+            st.markdown(
+                f"""
+                <div class="custom-card">
+                    <span class="badge">Girone {group.name}</span>
+                    <h3>Squadre</h3>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+
+            for team_id in group.team_ids:
+                st.write(f"• {get_team_name(tournament, team_id)}")
+
+
+elif page == "Calendario":
+    tournament = st.session_state.tournament
+
+    if tournament is None:
+        st.warning("Prima crea un torneo nella sezione Setup torneo.")
+    else:
+        st.subheader("Calendario")
+
+        group_matches = [match for match in tournament.matches if match.stage == "group"]
+        final_matches = [match for match in tournament.matches if match.stage == "final"]
+
+        st.markdown("### Fase a gironi")
+
+        for match in group_matches:
+            st.markdown(
+                f"""
+                <div class="custom-card">
+                    <span class="badge">{match.round_name}</span>
+                    <h3>{get_team_name(tournament, match.team1_id)} vs {get_team_name(tournament, match.team2_id)}</h3>
+                    <p><strong>ID partita:</strong> {match.id}</p>
+                    <p><strong>Stato:</strong> {"Giocata" if match.played else "Da giocare"}</p>
+                    <p><strong>Vincitrice:</strong> {get_team_name(tournament, match.winner_id) if match.winner_id else "-"}</p>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+
+        if final_matches:
+            st.markdown("### Fase finale")
+
+            round_order = {
+                "Ottavo di finale": 1,
+                "Quarto di finale": 2,
+                "Semifinale": 3,
+                "Finale": 4,
+                "Finale 3° posto": 4,
+            }
+
+            final_matches.sort(
+                key=lambda match: (
+                    round_order.get(match.round_name, 99),
+                    match.id,
+                )
+            )
+
+            current_round = None
+
+            for match in final_matches:
+                if match.round_name != current_round:
+                    current_round = match.round_name
+                    st.markdown(f"#### {current_round}")
+
+                st.markdown(
+                    f"""
+                    <div class="custom-card">
+                        <span class="badge">{match.round_name}</span>
+                        <h3>{get_team_name(tournament, match.team1_id)} vs {get_team_name(tournament, match.team2_id)}</h3>
+                        <p><strong>ID partita:</strong> {match.id}</p>
+                        <p><strong>Stato:</strong> {"Giocata" if match.played else "Da giocare"}</p>
+                        <p><strong>Vincitrice:</strong> {get_team_name(tournament, match.winner_id) if match.winner_id else "-"}</p>
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
+                )
+
+        show_podium(tournament)
+
+
+elif page == "Inserisci risultati":
+    tournament = st.session_state.tournament
+
+    if tournament is None:
+        st.warning("Prima crea un torneo nella sezione Setup torneo.")
+    else:
+        st.subheader("Inserisci risultati")
+
+        unplayed_matches = get_unplayed_matches(tournament)
+
+        if not unplayed_matches:
+            if tournament.champion_id is not None:
+                st.success("Torneo concluso.")
+                show_podium(tournament)
+            else:
+                st.success("Non ci sono partite da giocare al momento.")
+                st.info("Vai nella sezione Fase finale per generare il turno successivo, se disponibile.")
+        else:
+            match_options = {
+                f"ID {match.id} — {get_team_name(tournament, match.team1_id)} vs {get_team_name(tournament, match.team2_id)} — {match.round_name}": match
+                for match in unplayed_matches
+            }
+
+            selected_label = st.selectbox(
+                "Seleziona partita",
+                options=list(match_options.keys()),
+            )
+
+            selected_match = match_options[selected_label]
+
+            st.markdown(
+                f"""
+                <div class="custom-card">
+                    <span class="badge">{selected_match.round_name}</span>
+                    <h3>{get_team_name(tournament, selected_match.team1_id)} vs {get_team_name(tournament, selected_match.team2_id)}</h3>
+                    <p>Inserisci solo il punteggio della prima squadra. Il punteggio dell'altra viene calcolato automaticamente.</p>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+
+            with st.form("result_form"):
+                scores_team1 = []
+
+                for hand in range(1, 4):
+                    score = st.number_input(
+                        f"Mano {hand} — punti {get_team_name(tournament, selected_match.team1_id)}",
+                        min_value=0,
+                        max_value=120,
+                        value=60,
+                        step=1,
+                        key=f"score_{selected_match.id}_{hand}",
+                    )
+
+                    st.caption(
+                        f"Punti {get_team_name(tournament, selected_match.team2_id)}: {120 - score}"
+                    )
+
+                    scores_team1.append(score)
+
+                submitted = st.form_submit_button(
+                    "Registra risultato",
+                    type="primary",
+                    use_container_width=True,
+                )
+
+            if submitted:
+                try:
+                    register_match_result(selected_match, scores_team1)
+                    save_tournament(tournament)
+                    st.success(
+                        f"Risultato registrato. Vincitrice: {get_team_name(tournament, selected_match.winner_id)}"
+                    )
+                    st.rerun()
+                except ValueError as error:
+                    st.error(str(error))
+
+
+elif page == "Classifiche":
+    tournament = st.session_state.tournament
+
+    if tournament is None:
+        st.warning("Prima crea un torneo nella sezione Setup torneo.")
+    else:
+        st.subheader("Classifiche Gironi")
+
+        for group in tournament.groups:
+            standings = compute_group_standings(tournament, group)
+
+            st.markdown(
+                f"""
+                <div class="custom-card">
+                    <span class="badge">Girone {group.name}</span>
+                    <h3>Classifica</h3>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+
+            rows = []
+
+            for position, row in enumerate(standings, start=1):
+                rows.append(
+                    {
+                        "Pos": position,
+                        "Squadra": row["team_name"],
+                        "G": row["played"],
+                        "V": row["wins"],
+                        "S": row["losses"],
+                        "PT": row["tournament_points"],
+                        "PF": row["points_for"],
+                        "PS": row["points_against"],
+                        "Diff": row["point_diff"],
+                    }
+                )
+
+            st.table(rows)
+
+
+elif page == "Fase finale":
+    tournament = st.session_state.tournament
+
+    if tournament is None:
+        st.warning("Prima crea un torneo nella sezione Setup torneo.")
+    else:
+        st.subheader("Fase finale")
+
+        if not all_group_matches_played(tournament):
+            st.warning("Prima devono essere completate tutte le partite dei gironi.")
+        else:
+            if not final_stage_exists(tournament):
+                st.markdown(
+                    """
+                    <div class="custom-card">
+                        <span class="badge">Knockout</span>
+                        <h3>Genera tabellone finale</h3>
+                        <p>Verranno qualificate automaticamente le prime due squadre di ogni girone.</p>
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
+                )
+
+                if st.button("Genera fase finale", type="primary", use_container_width=True):
+                    try:
+                        create_final_stage(tournament)
+                        save_tournament(tournament)
+                        st.success("Fase finale generata correttamente.")
+                        st.rerun()
+                    except ValueError as error:
+                        st.error(str(error))
+
+            else:
+                show_podium(tournament)
+
+                if tournament.champion_id is None and can_advance_final_stage(tournament):
+                    st.info("Tutte le partite del turno corrente sono state giocate.")
+
+                    if st.button("Genera turno successivo", type="primary", use_container_width=True):
+                        try:
+                            advance_final_stage(tournament)
+                            save_tournament(tournament)
+
+                            if tournament.champion_id is not None:
+                                st.success("Torneo concluso.")
+                            else:
+                                st.success("Turno successivo generato correttamente.")
+
+                            st.rerun()
+                        except ValueError as error:
+                            st.error(str(error))
+
+                final_matches = get_final_matches(tournament)
+
+                st.markdown(
+                    """
+                    <div class="custom-card">
+                        <span class="badge">Tabellone</span>
+                        <h3>Partite fase finale</h3>
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
+                )
+
+                round_order = {
+                    "Ottavo di finale": 1,
+                    "Quarto di finale": 2,
+                    "Semifinale": 3,
+                    "Finale": 4,
+                    "Finale 3° posto": 4,
+                }
+
+                final_matches.sort(
+                    key=lambda match: (
+                        round_order.get(match.round_name, 99),
+                        match.id,
+                    )
+                )
+
+                current_round = None
+
+                for match in final_matches:
+                    if match.round_name != current_round:
+                        current_round = match.round_name
+                        st.markdown(f"### {current_round}")
+
+                    st.markdown(
+                        f"""
+                        <div class="custom-card">
+                            <span class="badge">{match.round_name}</span>
+                            <h3>{get_team_name(tournament, match.team1_id)} vs {get_team_name(tournament, match.team2_id)}</h3>
+                            <p><strong>ID partita:</strong> {match.id}</p>
+                            <p><strong>Stato:</strong> {"Giocata" if match.played else "Da giocare"}</p>
+                            <p><strong>Vincitrice:</strong> {get_team_name(tournament, match.winner_id) if match.winner_id else "-"}</p>
+                        </div>
+                        """,
+                        unsafe_allow_html=True,
+                    )

@@ -1,0 +1,19 @@
+# Python
+__pycache__/
+*.pyc
+
+# Virtual environment
+.venv/
+venv/
+
+# Environment files
+.env
+
+# Streamlit secrets
+.streamlit/secrets.toml
+
+# Dati locali torneo
+data/tournament.json
+
+# VS Code (opzionale)
+.vscode/
