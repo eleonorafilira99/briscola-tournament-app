@@ -571,3 +571,27 @@ def get_unplayed_matches(tournament: Tournament) -> list[Match]:
         and match.team1_id is not None
         and match.team2_id is not None
     ]
+
+def get_editable_played_matches(tournament: Tournament) -> list[Match]:
+    editable_matches: list[Match] = []
+
+    for match in tournament.matches:
+        if not match.played:
+            continue
+
+        if match.team1_id is None or match.team2_id is None:
+            continue
+
+        if match.stage == "group":
+            if not final_stage_exists(tournament):
+                editable_matches.append(match)
+
+        elif match.stage == "final":
+            current_round_matches = get_current_final_round_matches(tournament)
+
+            current_round_ids = {m.id for m in current_round_matches}
+
+            if match.id in current_round_ids:
+                editable_matches.append(match)
+
+    return editable_matches

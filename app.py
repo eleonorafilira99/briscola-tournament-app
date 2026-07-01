@@ -11,6 +11,7 @@ from core.tournament import (
     create_final_stage,
     create_tournament_from_team_names,
     final_stage_exists,
+    get_editable_played_matches,
     get_final_matches,
     get_team_name,
     get_unplayed_matches,
@@ -340,7 +341,6 @@ elif page == "Calendario":
 
         show_podium(tournament)
 
-
 # INSERISCI RISULTATI
 elif page == "Inserisci risultati":
     tournament = st.session_state.tournament
@@ -354,6 +354,80 @@ elif page == "Inserisci risultati":
             st.warning("Solo l'admin può inserire i risultati.")
             st.stop()
 
+        # MODIFICA RISULTATI GIÀ INSERITI
+        editable_matches = get_editable_played_matches(tournament)
+
+        if editable_matches:
+            st.markdown("### Modifica risultato già inserito")
+
+            edit_options = {
+                f"ID {match.id} — {get_team_name(tournament, match.team1_id)} vs {get_team_name(tournament, match.team2_id)} — {match.round_name}": match
+                for match in editable_matches
+            }
+
+            selected_edit_label = st.selectbox(
+                "Seleziona partita da modificare",
+                options=list(edit_options.keys()),
+                key="edit_match_selectbox",
+            )
+
+            selected_edit_match = edit_options[selected_edit_label]
+
+            st.markdown(
+                f"""
+                <div class="custom-card">
+                    <span class="badge">{selected_edit_match.round_name}</span>
+                    <h3>{get_team_name(tournament, selected_edit_match.team1_id)} vs {get_team_name(tournament, selected_edit_match.team2_id)}</h3>
+                    <p>Puoi modificare questa partita perché non è ancora stata generata la fase successiva.</p>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+
+            with st.form("edit_result_form"):
+                edited_scores_team1 = []
+
+                for hand in range(1, 4):
+                    current_value = 60
+
+                    if len(selected_edit_match.scores_team1) >= hand:
+                        current_value = selected_edit_match.scores_team1[hand - 1]
+
+                    score = st.number_input(
+                        f"Modifica mano {hand} — punti {get_team_name(tournament, selected_edit_match.team1_id)}",
+                        min_value=0,
+                        max_value=120,
+                        value=current_value,
+                        step=1,
+                        key=f"edit_score_{selected_edit_match.id}_{hand}",
+                    )
+
+                    st.caption(
+                        f"Punti {get_team_name(tournament, selected_edit_match.team2_id)}: {120 - score}"
+                    )
+
+                    edited_scores_team1.append(score)
+
+                submitted_edit = st.form_submit_button(
+                    "Salva modifica risultato",
+                    type="secondary",
+                    use_container_width=True,
+                )
+
+            if submitted_edit:
+                try:
+                    register_match_result(selected_edit_match, edited_scores_team1)
+                    save_tournament(tournament)
+                    st.success(
+                        f"Risultato modificato. Vincitrice: {get_team_name(tournament, selected_edit_match.winner_id)}"
+                    )
+                    st.rerun()
+                except ValueError as error:
+                    st.error(str(error))
+
+            st.divider()
+
+        # INSERIMENTO NUOVI RISULTATI
         unplayed_matches = get_unplayed_matches(tournament)
 
         if not unplayed_matches:
@@ -364,6 +438,8 @@ elif page == "Inserisci risultati":
                 st.success("Non ci sono partite da giocare al momento.")
                 st.info("Vai nella sezione Fase finale per generare il turno successivo, se disponibile.")
         else:
+            st.markdown("### Inserisci nuovo risultato")
+
             match_options = {
                 f"ID {match.id} — {get_team_name(tournament, match.team1_id)} vs {get_team_name(tournament, match.team2_id)} — {match.round_name}": match
                 for match in unplayed_matches
@@ -422,8 +498,7 @@ elif page == "Inserisci risultati":
                     st.rerun()
                 except ValueError as error:
                     st.error(str(error))
-
-
+                    
 # CLASSIFICHE
 elif page == "Classifiche":
     tournament = st.session_state.tournament
