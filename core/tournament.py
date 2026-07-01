@@ -36,14 +36,12 @@ def create_groups(tournament: Tournament) -> None:
     raw_groups: list[list[int]] = [[] for _ in range(number_of_groups)]
 
     for index, team_id in enumerate(team_ids):
-        group_index = index % number_of_groups
-        raw_groups[group_index].append(team_id)
+        raw_groups[index % number_of_groups].append(team_id)
 
-    tournament.groups = []
-
-    for index, group_team_ids in enumerate(raw_groups):
-        group_name = chr(ord("A") + index)
-        tournament.groups.append(Group(name=group_name, team_ids=group_team_ids))
+    tournament.groups = [
+        Group(name=chr(ord("A") + index), team_ids=group_team_ids)
+        for index, group_team_ids in enumerate(raw_groups)
+    ]
 
 
 def create_match(
@@ -99,15 +97,15 @@ def create_group_schedule(tournament: Tournament) -> None:
             round_name = f"Girone {group.name} - Turno {round_index}"
 
             for team1_id, team2_id in pairings:
-                match = create_match(
-                    match_id=next_match_id,
-                    stage="group",
-                    round_name=round_name,
-                    team1_id=team1_id,
-                    team2_id=team2_id,
+                matches.append(
+                    create_match(
+                        match_id=next_match_id,
+                        stage="group",
+                        round_name=round_name,
+                        team1_id=team1_id,
+                        team2_id=team2_id,
+                    )
                 )
-
-                matches.append(match)
                 next_match_id += 1
 
     tournament.matches = matches
@@ -115,7 +113,6 @@ def create_group_schedule(tournament: Tournament) -> None:
 
 def create_tournament_from_team_names(team_names: list[str]) -> Tournament:
     cleaned_names = [name.strip() for name in team_names if name.strip()]
-
     tournament = Tournament(teams=create_teams(cleaned_names))
 
     create_groups(tournament)
@@ -152,17 +149,12 @@ def determine_match_winner(match: Match) -> int:
     return match.team1_id
 
 
-def register_match_result(
-    match: Match,
-    scores_team1: list[int],
-) -> Match:
+def register_match_result(match: Match, scores_team1: list[int]) -> Match:
     if match.team1_id is None or match.team2_id is None:
         raise ValueError("Non è possibile registrare il risultato di una partita con BYE.")
 
     if len(scores_team1) != HANDS_PER_MATCH:
-        raise ValueError(
-            f"Devono essere inseriti esattamente {HANDS_PER_MATCH} punteggi."
-        )
+        raise ValueError(f"Devono essere inseriti esattamente {HANDS_PER_MATCH} punteggi.")
 
     for score in scores_team1:
         if score < 0 or score > POINTS_PER_HAND:
@@ -190,10 +182,7 @@ def compute_group_standings(tournament: Tournament, group: Group) -> list[dict]:
         points_against = 0
 
         for match in tournament.matches:
-            if match.stage != "group":
-                continue
-
-            if not match.played:
+            if match.stage != "group" or not match.played:
                 continue
 
             if team_id not in [match.team1_id, match.team2_id]:
@@ -244,11 +233,7 @@ def compute_group_standings(tournament: Tournament, group: Group) -> list[dict]:
 
 
 def all_group_matches_played(tournament: Tournament) -> bool:
-    group_matches = [
-        match for match in tournament.matches
-        if match.stage == "group"
-    ]
-
+    group_matches = [match for match in tournament.matches if match.stage == "group"]
     return bool(group_matches) and all(match.played for match in group_matches)
 
 
@@ -260,10 +245,7 @@ def get_group_qualified_teams(
 
     for group in tournament.groups:
         standings = compute_group_standings(tournament, group)
-        qualified.extend(
-            row["team_id"]
-            for row in standings[:teams_per_group]
-        )
+        qualified.extend(row["team_id"] for row in standings[:teams_per_group])
 
     return qualified
 
@@ -273,10 +255,7 @@ def final_stage_exists(tournament: Tournament) -> bool:
 
 
 def get_final_matches(tournament: Tournament) -> list[Match]:
-    return [
-        match for match in tournament.matches
-        if match.stage == "final"
-    ]
+    return [match for match in tournament.matches if match.stage == "final"]
 
 
 def get_next_match_id(tournament: Tournament) -> int:
@@ -317,22 +296,42 @@ def get_round_order(round_name: str) -> int:
 def get_current_final_round_matches(tournament: Tournament) -> list[Match]:
     final_matches = get_final_matches(tournament)
 
-    if not final_matches:
+    if not final_matches or tournament.champion_id is not None:
         return []
 
-    active_matches = [
+    active_matches = []
+
+    for match in final_matches:
+        if match.round_name == "Finale 3° posto":
+            continue
+
+        if not match.played:
+            active_matches.append(match)
+
+    if active_matches:
+        min_order = min(get_round_order(match.round_name) for match in active_matches)
+        return [
+            match for match in final_matches
+            if get_round_order(match.round_name) == min_order
+        ]
+
+    unfinished_final_or_third = [
         match for match in final_matches
-        if tournament.champion_id is None
+        if match.round_name in ["Finale", "Finale 3° posto"]
+        and not match.played
     ]
 
-    if not active_matches:
-        return []
+    if unfinished_final_or_third:
+        return [
+            match for match in final_matches
+            if match.round_name in ["Finale", "Finale 3° posto"]
+        ]
 
-    max_order = max(get_round_order(match.round_name) for match in active_matches)
+    last_order = max(get_round_order(match.round_name) for match in final_matches)
 
     return [
-        match for match in active_matches
-        if get_round_order(match.round_name) == max_order
+        match for match in final_matches
+        if get_round_order(match.round_name) == last_order
     ]
 
 
@@ -353,9 +352,8 @@ def create_final_stage(tournament: Tournament) -> None:
     if len(qualified) % 2 == 1:
         qualified.append(None)
 
-    round_name = get_final_round_name(
-        len([team for team in qualified if team is not None])
-    )
+    real_teams_count = len([team_id for team_id in qualified if team_id is not None])
+    round_name = get_final_round_name(real_teams_count)
 
     next_match_id = get_next_match_id(tournament)
     final_matches: list[Match] = []
@@ -414,6 +412,90 @@ def get_match_loser(match: Match) -> Optional[int]:
     return match.team1_id
 
 
+def get_real_losers(matches: list[Match]) -> list[int]:
+    losers = []
+
+    for match in matches:
+        loser = get_match_loser(match)
+        if loser is not None:
+            losers.append(loser)
+
+    return losers
+
+
+def create_final_and_third_place_from_semifinals(
+    tournament: Tournament,
+    semifinal_matches: list[Match],
+) -> None:
+    winners = [
+        match.winner_id
+        for match in semifinal_matches
+        if match.winner_id is not None
+    ]
+
+    losers = get_real_losers(semifinal_matches)
+
+    if len(winners) != 2:
+        raise ValueError("Le semifinali non sono complete.")
+
+    next_match_id = get_next_match_id(tournament)
+
+    final_match = create_match(
+        match_id=next_match_id,
+        stage="final",
+        round_name="Finale",
+        team1_id=winners[0],
+        team2_id=winners[1],
+    )
+
+    tournament.matches.append(final_match)
+
+    if len(losers) == 2:
+        third_place_match = create_match(
+            match_id=next_match_id + 1,
+            stage="final",
+            round_name="Finale 3° posto",
+            team1_id=losers[0],
+            team2_id=losers[1],
+        )
+
+        tournament.matches.append(third_place_match)
+
+    elif len(losers) == 1:
+        tournament.third_place_id = losers[0]
+
+
+def close_tournament_from_finals(tournament: Tournament, final_matches: list[Match]) -> None:
+    final_match = next(
+        (
+            match for match in final_matches
+            if match.round_name == "Finale"
+        ),
+        None,
+    )
+
+    if final_match is None or not final_match.played:
+        raise ValueError("La finale 1°/2° posto non è completa.")
+
+    tournament.champion_id = final_match.winner_id
+    tournament.runner_up_id = get_match_loser(final_match)
+
+    third_place_match = next(
+        (
+            match for match in final_matches
+            if match.round_name == "Finale 3° posto"
+        ),
+        None,
+    )
+
+    if third_place_match is not None:
+        if not third_place_match.played:
+            raise ValueError("La finale 3°/4° posto non è completa.")
+
+        tournament.third_place_id = third_place_match.winner_id
+        tournament.fourth_place_id = get_match_loser(third_place_match)
+
+
 def advance_final_stage(tournament: Tournament) -> None:
     if not final_stage_exists(tournament):
         raise ValueError("La fase finale non è ancora stata generata.")
@@ -429,26 +511,11 @@ def advance_final_stage(tournament: Tournament) -> None:
     current_round_name = current_round_matches[0].round_name
 
     if current_round_name == "Finale":
-        final_match = next(
-            match for match in current_round_matches
-            if match.round_name == "Finale"
-        )
+        close_tournament_from_finals(tournament, current_round_matches)
+        return
 
-        tournament.champion_id = final_match.winner_id
-        tournament.runner_up_id = get_match_loser(final_match)
-
-        third_place_match = next(
-            (
-                match for match in current_round_matches
-                if match.round_name == "Finale 3° posto"
-            ),
-            None,
-        )
-
-        if third_place_match is not None:
-            tournament.third_place_id = third_place_match.winner_id
-            tournament.fourth_place_id = get_match_loser(third_place_match)
-
+    if current_round_name == "Semifinale":
+        create_final_and_third_place_from_semifinals(tournament, current_round_matches)
         return
 
     winners = [
@@ -457,39 +524,6 @@ def advance_final_stage(tournament: Tournament) -> None:
         if match.winner_id is not None
     ]
 
-    if current_round_name == "Semifinale":
-        losers = [
-            get_match_loser(match)
-            for match in current_round_matches
-            if get_match_loser(match) is not None
-        ]
-
-        if len(winners) != 2 or len(losers) != 2:
-            raise ValueError("Le semifinali non sono complete.")
-
-        next_match_id = get_next_match_id(tournament)
-
-        final_match = create_match(
-            match_id=next_match_id,
-            stage="final",
-            round_name="Finale",
-            team1_id=winners[0],
-            team2_id=winners[1],
-        )
-
-        third_place_match = create_match(
-            match_id=next_match_id + 1,
-            stage="final",
-            round_name="Finale 3° posto",
-            team1_id=losers[0],
-            team2_id=losers[1],
-        )
-
-        tournament.matches.extend([final_match, third_place_match])
-        return
-
-    next_round_name = get_next_round_name(current_round_name)
-
     if len(winners) == 1:
         tournament.champion_id = winners[0]
         return
@@ -497,6 +531,7 @@ def advance_final_stage(tournament: Tournament) -> None:
     if len(winners) % 2 == 1:
         winners.append(None)
 
+    next_round_name = get_next_round_name(current_round_name)
     next_match_id = get_next_match_id(tournament)
 
     for index in range(0, len(winners), 2):
