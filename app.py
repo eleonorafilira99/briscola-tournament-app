@@ -280,10 +280,10 @@ st.title("🃏 Torneo di Briscola")
 # ------------------------------------------------------------
 
 if page == "Regolamento torneo":
-    st.header("Benvenuti al Torneo di Briscola 🃏")
+    st.header("Benvenuti al Torneo di Briscola organizzato da Sanbe Burger 🍔")
 
     st.markdown("""
-Benvenuti! 🃏  
+Benvenuti!
 Di seguito trovate una breve spiegazione di come si svolgerà il torneo.
 
 ---
