@@ -1,3 +1,6 @@
+import json
+from dataclasses import asdict
+
 import streamlit as st
 
 from core.tournament import (
@@ -39,14 +42,26 @@ def show_podium(tournament) -> None:
     if tournament.champion_id is not None:
         st.success(f"🏆 1° posto: {get_team_name(tournament, tournament.champion_id)}")
 
-    if getattr(tournament, "runner_up_id", None) is not None:
+    if tournament.runner_up_id is not None:
         st.info(f"🥈 2° posto: {get_team_name(tournament, tournament.runner_up_id)}")
 
-    if getattr(tournament, "third_place_id", None) is not None:
+    if tournament.third_place_id is not None:
         st.info(f"🥉 3° posto: {get_team_name(tournament, tournament.third_place_id)}")
 
-    if getattr(tournament, "fourth_place_id", None) is not None:
+    if tournament.fourth_place_id is not None:
         st.info(f"4° posto: {get_team_name(tournament, tournament.fourth_place_id)}")
+
+
+def reset_tournament_session() -> None:
+    delete_saved_tournament()
+
+    if "tournament" in st.session_state:
+        del st.session_state["tournament"]
+
+    if "team_count" in st.session_state:
+        del st.session_state["team_count"]
+
+    st.rerun()
 
 
 if "admin_authenticated" not in st.session_state:
@@ -83,9 +98,8 @@ admin_password = st.sidebar.text_input(
 
 try:
     expected_password = st.secrets["ADMIN_PASSWORD"]
-    st.sidebar.success("Secrets caricati correttamente")
-except Exception as e:
-    st.sidebar.error(f"Errore secrets: {e}")
+except Exception:
+    st.sidebar.error("ADMIN_PASSWORD non configurata nei Secrets.")
     expected_password = None
 
 if st.sidebar.button("Accedi come admin"):
@@ -108,19 +122,44 @@ else:
     st.sidebar.info("Modalità consultazione")
 
 
+st.sidebar.divider()
+st.sidebar.markdown("### Gestione torneo")
+
 if saved_tournament_exists():
     st.sidebar.success("Torneo salvato presente")
 
     if st.sidebar.button("Ricarica torneo salvato"):
         st.session_state.tournament = load_tournament()
         st.rerun()
-
-    if is_admin() and st.sidebar.button("Elimina torneo salvato"):
-        delete_saved_tournament()
-        st.session_state.tournament = None
-        st.rerun()
 else:
     st.sidebar.info("Nessun torneo salvato")
+
+
+if st.session_state.tournament is not None:
+    tournament_json = json.dumps(
+        asdict(st.session_state.tournament),
+        ensure_ascii=False,
+        indent=4,
+    )
+
+    st.sidebar.download_button(
+        label="Esporta backup JSON",
+        data=tournament_json,
+        file_name="backup_torneo_briscola.json",
+        mime="application/json",
+        use_container_width=True,
+    )
+
+
+if is_admin():
+    confirm_reset = st.sidebar.checkbox("Confermo reset totale")
+
+    if confirm_reset and st.sidebar.button(
+        "Reset completo torneo",
+        type="primary",
+        use_container_width=True,
+    ):
+        reset_tournament_session()
 
 
 page = st.sidebar.radio(
