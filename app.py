@@ -31,11 +31,8 @@ st.set_page_config(
 apply_theme()
 
 
-if "tournament" not in st.session_state:
-    st.session_state.tournament = load_tournament()
-
-if "team_count" not in st.session_state:
-    st.session_state.team_count = 8
+def is_admin() -> bool:
+    return st.session_state.get("admin_authenticated", False)
 
 
 def show_podium(tournament) -> None:
@@ -52,6 +49,16 @@ def show_podium(tournament) -> None:
         st.info(f"4° posto: {get_team_name(tournament, tournament.fourth_place_id)}")
 
 
+if "admin_authenticated" not in st.session_state:
+    st.session_state.admin_authenticated = False
+
+if "tournament" not in st.session_state:
+    st.session_state.tournament = load_tournament()
+
+if "team_count" not in st.session_state:
+    st.session_state.team_count = 8
+
+
 st.markdown(
     '<div class="main-title">🃏 Torneo di Briscola a Coppie</div>',
     unsafe_allow_html=True,
@@ -63,7 +70,42 @@ st.markdown(
 )
 
 
+# SIDEBAR
 st.sidebar.title("Menu")
+
+st.sidebar.markdown("### Accesso admin")
+
+admin_password = st.sidebar.text_input(
+    "Password",
+    type="password",
+    placeholder="Inserisci password admin",
+)
+
+try:
+    expected_password = st.secrets["ADMIN_PASSWORD"]
+except Exception:
+    st.sidebar.error("ADMIN_PASSWORD non configurata nei Secrets.")
+    expected_password = None
+
+if st.sidebar.button("Accedi come admin"):
+    if expected_password is None:
+        st.sidebar.error("Configura prima ADMIN_PASSWORD nei Secrets.")
+    elif admin_password == expected_password:
+        st.session_state.admin_authenticated = True
+        st.sidebar.success("Accesso admin effettuato.")
+        st.rerun()
+    else:
+        st.sidebar.error("Password non corretta.")
+
+if is_admin():
+    st.sidebar.success("Modalità admin attiva")
+
+    if st.sidebar.button("Esci da admin"):
+        st.session_state.admin_authenticated = False
+        st.rerun()
+else:
+    st.sidebar.info("Modalità consultazione")
+
 
 if saved_tournament_exists():
     st.sidebar.success("Torneo salvato presente")
@@ -72,7 +114,7 @@ if saved_tournament_exists():
         st.session_state.tournament = load_tournament()
         st.rerun()
 
-    if st.sidebar.button("Elimina torneo salvato"):
+    if is_admin() and st.sidebar.button("Elimina torneo salvato"):
         delete_saved_tournament()
         st.session_state.tournament = None
         st.rerun()
@@ -93,6 +135,7 @@ page = st.sidebar.radio(
 )
 
 
+# SETUP TORNEO
 if page == "Setup torneo":
     st.markdown(
         """
@@ -105,12 +148,16 @@ if page == "Setup torneo":
         unsafe_allow_html=True,
     )
 
+    if not is_admin():
+        st.info("Sei in modalità consultazione. Solo l'admin può creare o modificare il torneo.")
+
     st.session_state.team_count = st.number_input(
         "Numero di squadre",
         min_value=2,
         max_value=64,
         value=st.session_state.team_count,
         step=1,
+        disabled=not is_admin(),
     )
 
     st.divider()
@@ -124,22 +171,25 @@ if page == "Setup torneo":
                 f"Nome squadra {index + 1}",
                 value=f"Squadra {index + 1}",
                 key=f"team_name_{index}",
+                disabled=not is_admin(),
             )
             team_names.append(name)
 
     st.divider()
 
-    if st.button("Crea torneo", type="primary", use_container_width=True):
-        cleaned_names = [name.strip() for name in team_names if name.strip()]
+    if is_admin():
+        if st.button("Crea torneo", type="primary", use_container_width=True):
+            cleaned_names = [name.strip() for name in team_names if name.strip()]
 
-        if len(cleaned_names) < 2:
-            st.error("Inserisci almeno 2 squadre.")
-        elif len(set(name.lower() for name in cleaned_names)) != len(cleaned_names):
-            st.error("Ci sono nomi squadra duplicati. Correggili prima di creare il torneo.")
-        else:
-            st.session_state.tournament = create_tournament_from_team_names(cleaned_names)
-            save_tournament(st.session_state.tournament)
-            st.success("Torneo creato correttamente e salvato.")
+            if len(cleaned_names) < 2:
+                st.error("Inserisci almeno 2 squadre.")
+            elif len(set(name.lower() for name in cleaned_names)) != len(cleaned_names):
+                st.error("Ci sono nomi squadra duplicati. Correggili prima di creare il torneo.")
+            else:
+                st.session_state.tournament = create_tournament_from_team_names(cleaned_names)
+                save_tournament(st.session_state.tournament)
+                st.success("Torneo creato correttamente e salvato.")
+                st.rerun()
 
     if st.session_state.tournament is not None:
         tournament = st.session_state.tournament
@@ -158,6 +208,7 @@ if page == "Setup torneo":
         show_podium(tournament)
 
 
+# GIRONI
 elif page == "Gironi":
     tournament = st.session_state.tournament
 
@@ -181,6 +232,7 @@ elif page == "Gironi":
                 st.write(f"• {get_team_name(tournament, team_id)}")
 
 
+# CALENDARIO
 elif page == "Calendario":
     tournament = st.session_state.tournament
 
@@ -249,6 +301,7 @@ elif page == "Calendario":
         show_podium(tournament)
 
 
+# INSERISCI RISULTATI
 elif page == "Inserisci risultati":
     tournament = st.session_state.tournament
 
@@ -256,6 +309,10 @@ elif page == "Inserisci risultati":
         st.warning("Prima crea un torneo nella sezione Setup torneo.")
     else:
         st.subheader("Inserisci risultati")
+
+        if not is_admin():
+            st.warning("Solo l'admin può inserire i risultati.")
+            st.stop()
 
         unplayed_matches = get_unplayed_matches(tournament)
 
@@ -327,6 +384,7 @@ elif page == "Inserisci risultati":
                     st.error(str(error))
 
 
+# CLASSIFICHE
 elif page == "Classifiche":
     tournament = st.session_state.tournament
 
@@ -368,6 +426,7 @@ elif page == "Classifiche":
             st.table(rows)
 
 
+# FASE FINALE
 elif page == "Fase finale":
     tournament = st.session_state.tournament
 
@@ -391,7 +450,9 @@ elif page == "Fase finale":
                     unsafe_allow_html=True,
                 )
 
-                if st.button("Genera fase finale", type="primary", use_container_width=True):
+                if not is_admin():
+                    st.info("Solo l'admin può generare la fase finale.")
+                elif st.button("Genera fase finale", type="primary", use_container_width=True):
                     try:
                         create_final_stage(tournament)
                         save_tournament(tournament)
@@ -406,7 +467,9 @@ elif page == "Fase finale":
                 if tournament.champion_id is None and can_advance_final_stage(tournament):
                     st.info("Tutte le partite del turno corrente sono state giocate.")
 
-                    if st.button("Genera turno successivo", type="primary", use_container_width=True):
+                    if not is_admin():
+                        st.info("Solo l'admin può generare il turno successivo.")
+                    elif st.button("Genera turno successivo", type="primary", use_container_width=True):
                         try:
                             advance_final_stage(tournament)
                             save_tournament(tournament)
