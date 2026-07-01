@@ -283,7 +283,6 @@ if page == "Regolamento torneo":
     st.header("Benvenuti al Torneo di Briscola organizzato da Sanbe Burger 🍔")
 
     st.markdown("""
-Benvenuti!
 Di seguito trovate una breve spiegazione di come si svolgerà il torneo.
 
 ---
